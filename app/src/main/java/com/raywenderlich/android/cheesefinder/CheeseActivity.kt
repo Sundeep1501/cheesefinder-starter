@@ -32,11 +32,13 @@ package com.raywenderlich.android.cheesefinder
 
 import android.text.Editable
 import android.text.TextWatcher
+import androidx.core.util.TimeUtils
 import io.reactivex.Observable
 import io.reactivex.ObservableOnSubscribe
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_cheeses.*
+import java.util.concurrent.TimeUnit
 
 class CheeseActivity : BaseSearchActivity() {
 
@@ -66,6 +68,7 @@ class CheeseActivity : BaseSearchActivity() {
                 queryEditText.removeTextChangedListener(textWatcher)
             }
         }).filter{it.length > 2}
+                .debounce(1, TimeUnit.SECONDS)
     }
 
     override fun onStart() {
