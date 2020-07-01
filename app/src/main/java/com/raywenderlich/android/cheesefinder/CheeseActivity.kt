@@ -33,6 +33,7 @@ package com.raywenderlich.android.cheesefinder
 import android.text.Editable
 import android.text.TextWatcher
 import io.reactivex.Observable
+import io.reactivex.ObservableOnSubscribe
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_cheeses.*
@@ -47,7 +48,7 @@ class CheeseActivity : BaseSearchActivity() {
     }
 
     private fun createTextChangeObservable():Observable<String>{
-        return Observable.create {
+        return Observable.create(ObservableOnSubscribe<String>{
             val textWatcher = object: TextWatcher {
                 override fun afterTextChanged(s: Editable?) {
                 }
@@ -64,7 +65,7 @@ class CheeseActivity : BaseSearchActivity() {
             it.setCancellable{
                 queryEditText.removeTextChangedListener(textWatcher)
             }
-        }
+        }).filter{it.length > 2}
     }
 
     override fun onStart() {
