@@ -35,37 +35,63 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.raywenderlich.android.cheesefinder.database.Cheese
+import com.raywenderlich.android.cheesefinder.database.CheeseDatabase
+import com.raywenderlich.android.cheesefinder.ui.CheckableImageView
+import io.reactivex.Maybe
+import io.reactivex.MaybeOnSubscribe
+import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.list_item.view.*
 
 class CheeseAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-  var compositeDisposable = CompositeDisposable()
+    var compositeDisposable = CompositeDisposable()
 
-  var cheeses: List<Cheese> = listOf()
-    set(value) {
-      field = value
-      notifyDataSetChanged()
+    var cheeses: List<Cheese> = listOf()
+        set(value) {
+            field = value
+            notifyDataSetChanged()
+        }
+
+    override fun getItemCount() = cheeses.size
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        super.onDetachedFromRecyclerView(recyclerView)
+        compositeDisposable.clear()
     }
 
-  override fun getItemCount() = cheeses.size
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        val cheese = cheeses[position]
+        holder.itemView.textView.text = cheese.name
+        holder.itemView.imageFavorite.isChecked = cheese.favorite == 1
 
-  override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
-    super.onDetachedFromRecyclerView(recyclerView)
-    compositeDisposable.clear()
-  }
+        val disposable = Maybe.create<Boolean> { e ->
+            holder.itemView.imageFavorite.setOnClickListener { view ->
+                e.onSuccess((view as CheckableImageView).isChecked)
+            }
+            e.setCancellable {
+                holder.itemView.imageFavorite.setOnClickListener(null)
+            }
+        }.toFlowable().onBackpressureLatest()
+                .observeOn(Schedulers.io())
+                .map { isChecked ->
+                    cheese.favorite = if (!isChecked) 1 else 0
 
-  override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-    val cheese = cheeses[position]
-    holder.itemView.textView.text = cheese.name
-    holder.itemView.imageFavorite.isChecked = cheese.favorite == 1
+                    CheeseDatabase.getInstance(holder.itemView.context)
+                            .cheeseDao()
+                            .favoriteCheese(cheese)
+                }
+                .subscribeOn(AndroidSchedulers.mainThread())
+                .subscribe{
+                  holder.itemView.imageFavorite.isChecked = it == 1
+                }
+    }
 
-  }
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        return ViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.list_item, parent, false))
+    }
 
-  override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-    return ViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.list_item, parent, false))
-  }
-
-  class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)
+    class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)
 
 }

@@ -37,11 +37,14 @@ import io.reactivex.Flowable
 import io.reactivex.Observable
 import io.reactivex.ObservableOnSubscribe
 import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_cheeses.*
 import java.util.concurrent.TimeUnit
 
 class CheeseActivity : BaseSearchActivity() {
+
+    private lateinit var disposable: Disposable
 
     private fun createButtonClickObservable(): Flowable<String>? {
         return Observable.create(ObservableOnSubscribe<String> { e ->
@@ -75,7 +78,7 @@ class CheeseActivity : BaseSearchActivity() {
 
     override fun onStart() {
         super.onStart()
-        val disposable = Flowable.merge(createButtonClickObservable(), createTextChangeObservable())
+        disposable = Flowable.merge(createButtonClickObservable(), createTextChangeObservable())
                 .subscribeOn(AndroidSchedulers.mainThread())
                 .observeOn(AndroidSchedulers.mainThread())
                 .doOnNext { showProgress() }
@@ -86,5 +89,12 @@ class CheeseActivity : BaseSearchActivity() {
                     hideProgress()
                     showResult(it)
                 }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (!disposable.isDisposed) {
+            disposable.dispose()
+        }
     }
 }
