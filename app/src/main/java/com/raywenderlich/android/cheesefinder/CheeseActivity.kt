@@ -32,7 +32,8 @@ package com.raywenderlich.android.cheesefinder
 
 import android.text.Editable
 import android.text.TextWatcher
-import androidx.core.util.TimeUtils
+import io.reactivex.BackpressureStrategy
+import io.reactivex.Flowable
 import io.reactivex.Observable
 import io.reactivex.ObservableOnSubscribe
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -42,16 +43,16 @@ import java.util.concurrent.TimeUnit
 
 class CheeseActivity : BaseSearchActivity() {
 
-    private fun createButtonClickObservable(): Observable<String> {
-        return Observable.create { e ->
+    private fun createButtonClickObservable(): Flowable<String>? {
+        return Observable.create(ObservableOnSubscribe<String> { e ->
             searchButton.setOnClickListener { e.onNext(queryEditText.text.toString()) }
             e.setCancellable { searchButton.setOnClickListener(null) }
-        }
+        }).toFlowable(BackpressureStrategy.LATEST)
     }
 
-    private fun createTextChangeObservable():Observable<String>{
-        return Observable.create(ObservableOnSubscribe<String>{
-            val textWatcher = object: TextWatcher {
+    private fun createTextChangeObservable(): Flowable<String>? {
+        return Observable.create(ObservableOnSubscribe<String> {
+            val textWatcher = object : TextWatcher {
                 override fun afterTextChanged(s: Editable?) {
                 }
 
@@ -64,16 +65,17 @@ class CheeseActivity : BaseSearchActivity() {
             }
             queryEditText.addTextChangedListener(textWatcher)
 
-            it.setCancellable{
+            it.setCancellable {
                 queryEditText.removeTextChangedListener(textWatcher)
             }
-        }).filter{it.length > 2}
+        }).filter { it.length > 2 }
                 .debounce(1, TimeUnit.SECONDS)
+                .toFlowable(BackpressureStrategy.BUFFER)
     }
 
     override fun onStart() {
         super.onStart()
-        val disposable = createTextChangeObservable()
+        val disposable = Flowable.merge(createButtonClickObservable(), createTextChangeObservable())
                 .subscribeOn(AndroidSchedulers.mainThread())
                 .observeOn(AndroidSchedulers.mainThread())
                 .doOnNext { showProgress() }
