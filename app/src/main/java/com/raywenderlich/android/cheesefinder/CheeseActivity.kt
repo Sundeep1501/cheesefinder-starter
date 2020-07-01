@@ -48,10 +48,13 @@ class CheeseActivity : BaseSearchActivity() {
         super.onStart()
         val disposable = createButtonClickObservable()
                 .subscribeOn(AndroidSchedulers.mainThread())
+                .observeOn(AndroidSchedulers.mainThread())
+                .doOnNext { showProgress() }
                 .observeOn(Schedulers.io())
                 .map { cheeseSearchEngine.search(it)!! }
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe {
+                    hideProgress()
                     showResult(it)
                 }
     }
